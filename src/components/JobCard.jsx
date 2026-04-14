@@ -9,8 +9,18 @@ const OS_OPTIONS = ['ubuntu-latest', 'windows-latest', 'macos-latest']
 export default function JobCard({ job, jobIndex }) {
   const { state, dispatch, dragSrcRef } = useApp()
   const [jobDragOver, setJobDragOver] = useState(false)
+  const [envOpen, setEnvOpen] = useState(false)
+  const [newEnvKey, setNewEnvKey] = useState('')
 
   const otherJobs = state.jobs.filter(j => j.id !== job.id)
+  const envEntries = Object.entries(job.env || {})
+
+  const handleAddEnv = () => {
+    const key = newEnvKey.trim()
+    if (!key) return
+    dispatch({ type: 'UPDATE_JOB_ENV', payload: { jobId: job.id, key, value: '' } })
+    setNewEnvKey('')
+  }
 
   // ── Touch drag for job reordering ────────────────────────
   const getDragSrc = useCallback(() => ({ kind: 'job', jobId: job.id }), [job.id])
@@ -119,6 +129,23 @@ export default function JobCard({ job, jobIndex }) {
             {otherJobs.map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
           </select>
         )}
+        <input
+          className="job-timeout-input"
+          type="number"
+          min="1"
+          max="360"
+          placeholder="timeout"
+          title="timeout-minutes"
+          value={job.timeoutMinutes || ''}
+          onChange={e => dispatch({ type: 'UPDATE_JOB', payload: { jobId: job.id, field: 'timeoutMinutes', value: e.target.value ? Number(e.target.value) : undefined } })}
+        />
+        <button
+          className={'job-env-toggle' + (envOpen ? ' open' : '')}
+          title="Job env variables"
+          onClick={() => setEnvOpen(o => !o)}
+        >
+          env{envEntries.length > 0 ? ` (${envEntries.length})` : ''}
+        </button>
         <button
           className="del-btn"
           data-deljob="1"
@@ -128,6 +155,36 @@ export default function JobCard({ job, jobIndex }) {
           ×
         </button>
       </div>
+
+      {envOpen && (
+        <div className="job-env-section">
+          {envEntries.map(([key, val]) => (
+            <div key={key} className="job-env-row">
+              <span className="job-env-key">{key}</span>
+              <input
+                className="job-env-val"
+                value={String(val)}
+                onChange={e => dispatch({ type: 'UPDATE_JOB_ENV', payload: { jobId: job.id, key, value: e.target.value } })}
+              />
+              <button
+                className="job-env-rm"
+                onClick={() => dispatch({ type: 'REMOVE_JOB_ENV', payload: { jobId: job.id, key } })}
+              >×</button>
+            </div>
+          ))}
+          <div className="job-env-row">
+            <input
+              className="job-env-new"
+              placeholder="KEY_NAME"
+              value={newEnvKey}
+              onChange={e => setNewEnvKey(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddEnv() } }}
+            />
+            <button className="job-env-add" onClick={handleAddEnv}>+ Add</button>
+          </div>
+        </div>
+      )}
+
       <div className="job-steps">
         {job.steps.map((step, i) => (
           <StepItem key={step.id} step={step} jobId={job.id} stepIndex={i} />

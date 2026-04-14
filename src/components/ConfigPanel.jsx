@@ -9,8 +9,12 @@ const THEME_COLORS = {
   purple: '#534ab7', teal: '#0f6e56', coral: '#d85a30', pink: '#d4537e', red: '#e24b4a',
 }
 
-function StepForm({ step, jobId, stepId, onUpdate, onUpdateWith, onUpdateEnv, lastFocusedRef }) {
+const SHELL_OPTIONS = ['', 'bash', 'sh', 'pwsh', 'powershell', 'python', 'cmd']
+
+function StepForm({ step, jobId, stepId, onUpdate, onUpdateWith, onRemoveWith, onAddWith, onUpdateEnv, onRemoveEnv, onAddEnv, lastFocusedRef }) {
   const [ctxOpen, setCtxOpen] = useState(false)
+  const [newWithKey, setNewWithKey] = useState('')
+  const [newEnvKey, setNewEnvKey] = useState('')
 
   const trackFocus = (e) => {
     lastFocusedRef.current = {
@@ -42,8 +46,33 @@ function StepForm({ step, jobId, stepId, onUpdate, onUpdateWith, onUpdateEnv, la
     })
   }, [onUpdate, onUpdateWith, onUpdateEnv])
 
+  const handleAddWith = () => {
+    const key = newWithKey.trim()
+    if (!key) return
+    onAddWith(key)
+    setNewWithKey('')
+  }
+
+  const handleAddEnv = () => {
+    const key = newEnvKey.trim()
+    if (!key) return
+    onAddEnv(key)
+    setNewEnvKey('')
+  }
+
   return (
     <div className="cfg-form">
+      {/* Step ID */}
+      <div className="cfg-field">
+        <label className="cfg-label">Step ID <span className="cfg-label-hint">(id:)</span></label>
+        <input
+          className="cfg-input cfg-mono"
+          placeholder="e.g. my-step"
+          value={step.stepId || ''}
+          onChange={e => onUpdate({ stepId: e.target.value })}
+        />
+      </div>
+
       {/* Name */}
       <div className="cfg-field">
         <label className="cfg-label">Name</label>
@@ -54,6 +83,19 @@ function StepForm({ step, jobId, stepId, onUpdate, onUpdateWith, onUpdateEnv, la
           onFocus={trackFocus}
           onChange={e => onUpdate({ name: e.target.value })}
         />
+      </div>
+
+      {/* continue-on-error */}
+      <div className="cfg-field cfg-checkbox-field">
+        <label className="cfg-checkbox-label">
+          <input
+            type="checkbox"
+            checked={!!step.continueOnError}
+            onChange={e => onUpdate({ continueOnError: e.target.checked })}
+          />
+          <span>Continue on error</span>
+          <span className="cfg-label-hint">(continue-on-error)</span>
+        </label>
       </div>
 
       {/* Uses */}
@@ -72,45 +114,81 @@ function StepForm({ step, jobId, stepId, onUpdate, onUpdateWith, onUpdateEnv, la
 
       {/* Run */}
       {step.run !== undefined && (
-        <div className="cfg-field">
-          <label className="cfg-label">Run</label>
-          <textarea
-            className="cfg-input cfg-textarea cfg-mono"
-            value={step.run}
-            data-field="run"
-            onFocus={trackFocus}
-            onChange={e => onUpdate({ run: e.target.value })}
-          />
-        </div>
+        <>
+          <div className="cfg-field">
+            <label className="cfg-label">Run</label>
+            <textarea
+              className="cfg-input cfg-textarea cfg-mono"
+              value={step.run}
+              data-field="run"
+              onFocus={trackFocus}
+              onChange={e => onUpdate({ run: e.target.value })}
+            />
+          </div>
+          <div className="cfg-field">
+            <label className="cfg-label">Working directory <span className="cfg-label-hint">(working-directory:)</span></label>
+            <input
+              className="cfg-input cfg-mono"
+              placeholder="e.g. ./src"
+              value={step.workingDirectory || ''}
+              onChange={e => onUpdate({ workingDirectory: e.target.value })}
+            />
+          </div>
+          <div className="cfg-field">
+            <label className="cfg-label">Shell</label>
+            <select
+              className="cfg-input"
+              value={step.shell || ''}
+              onChange={e => onUpdate({ shell: e.target.value })}
+            >
+              {SHELL_OPTIONS.map(s => (
+                <option key={s} value={s}>{s || '(default)'}</option>
+              ))}
+            </select>
+          </div>
+        </>
       )}
 
       {/* With */}
-      {step.with && Object.keys(step.with).length > 0 && (
+      {step.uses !== undefined && (
         <div className="cfg-section-card">
           <div className="cfg-section-label">with:</div>
-          {Object.entries(step.with).map(([key, val]) => (
-            <div key={key} className="cfg-field">
+          {Object.entries(step.with || {}).map(([key, val]) => (
+            <div key={key} className="cfg-kv-row">
               <label className="cfg-label cfg-label-mono">{key}</label>
-              <input
-                className="cfg-input"
-                value={String(val)}
-                data-field="with"
-                data-withkey={key}
-                onFocus={trackFocus}
-                onChange={e => onUpdateWith(key, e.target.value)}
-              />
+              <div className="cfg-kv-input-row">
+                <input
+                  className="cfg-input"
+                  value={String(val)}
+                  data-field="with"
+                  data-withkey={key}
+                  onFocus={trackFocus}
+                  onChange={e => onUpdateWith(key, e.target.value)}
+                />
+                <button className="cfg-kv-rm" onClick={() => onRemoveWith(key)} title="Remove">×</button>
+              </div>
             </div>
           ))}
+          <div className="cfg-kv-add-row">
+            <input
+              className="cfg-input cfg-mono"
+              placeholder="key name"
+              value={newWithKey}
+              onChange={e => setNewWithKey(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddWith() } }}
+            />
+            <button className="cfg-kv-add-btn" onClick={handleAddWith}>+ Add</button>
+          </div>
         </div>
       )}
 
       {/* Env */}
-      {step.env && Object.keys(step.env).length > 0 && (
-        <div className="cfg-section-card">
-          <div className="cfg-section-label">env:</div>
-          {Object.entries(step.env).map(([key, val]) => (
-            <div key={key} className="cfg-field">
-              <label className="cfg-label cfg-label-mono">{key}</label>
+      <div className="cfg-section-card">
+        <div className="cfg-section-label">env:</div>
+        {Object.entries(step.env || {}).map(([key, val]) => (
+          <div key={key} className="cfg-kv-row">
+            <label className="cfg-label cfg-label-mono">{key}</label>
+            <div className="cfg-kv-input-row">
               <input
                 className="cfg-input"
                 value={String(val)}
@@ -119,10 +197,21 @@ function StepForm({ step, jobId, stepId, onUpdate, onUpdateWith, onUpdateEnv, la
                 onFocus={trackFocus}
                 onChange={e => onUpdateEnv(key, e.target.value)}
               />
+              <button className="cfg-kv-rm" onClick={() => onRemoveEnv(key)} title="Remove">×</button>
             </div>
-          ))}
+          </div>
+        ))}
+        <div className="cfg-kv-add-row">
+          <input
+            className="cfg-input cfg-mono"
+            placeholder="KEY_NAME"
+            value={newEnvKey}
+            onChange={e => setNewEnvKey(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddEnv() } }}
+          />
+          <button className="cfg-kv-add-btn" onClick={handleAddEnv}>+ Add</button>
         </div>
-      )}
+      </div>
 
       {/* Condition */}
       <div className="cfg-field">
@@ -186,12 +275,46 @@ export default function ConfigPanel() {
     dispatch({ type: 'UPDATE_STEP_WITH', payload: { jobId: selectedStep.jobId, stepId: selectedStep.stepId, key, value } })
   }, [selectedStep, dispatch])
 
+  const onRemoveWith = useCallback((key) => {
+    if (!selectedStep) return
+    dispatch({ type: 'REMOVE_STEP_WITH', payload: { jobId: selectedStep.jobId, stepId: selectedStep.stepId, key } })
+  }, [selectedStep, dispatch])
+
+  const onAddWith = useCallback((key) => {
+    if (!selectedStep) return
+    dispatch({ type: 'ADD_STEP_WITH', payload: { jobId: selectedStep.jobId, stepId: selectedStep.stepId, key } })
+  }, [selectedStep, dispatch])
+
   const onUpdateEnv = useCallback((key, value) => {
     if (!selectedStep) return
     dispatch({ type: 'UPDATE_STEP_ENV', payload: { jobId: selectedStep.jobId, stepId: selectedStep.stepId, key, value } })
   }, [selectedStep, dispatch])
 
+  const onRemoveEnv = useCallback((key) => {
+    if (!selectedStep) return
+    dispatch({ type: 'REMOVE_STEP_ENV', payload: { jobId: selectedStep.jobId, stepId: selectedStep.stepId, key } })
+  }, [selectedStep, dispatch])
+
+  const onAddEnv = useCallback((key) => {
+    if (!selectedStep) return
+    dispatch({ type: 'ADD_STEP_ENV', payload: { jobId: selectedStep.jobId, stepId: selectedStep.stepId, key } })
+  }, [selectedStep, dispatch])
+
   const closeConfig = () => dispatch({ type: 'CLOSE_MOBILE_CONFIG' })
+
+  const sharedProps = {
+    step,
+    jobId: selectedStep?.jobId,
+    stepId: selectedStep?.stepId,
+    onUpdate,
+    onUpdateWith,
+    onRemoveWith,
+    onAddWith,
+    onUpdateEnv,
+    onRemoveEnv,
+    onAddEnv,
+    lastFocusedRef,
+  }
 
   // ── Mobile: render as bottom sheet ──────────────────────────
   if (isMobile) {
@@ -220,15 +343,7 @@ export default function ConfigPanel() {
             {!step ? (
               <div className="no-step">Select a step in the canvas to configure it</div>
             ) : (
-              <StepForm
-                step={step}
-                jobId={selectedStep.jobId}
-                stepId={selectedStep.stepId}
-                onUpdate={onUpdate}
-                onUpdateWith={onUpdateWith}
-                onUpdateEnv={onUpdateEnv}
-                lastFocusedRef={lastFocusedRef}
-              />
+              <StepForm {...sharedProps} />
             )}
           </div>
         </div>
@@ -246,15 +361,7 @@ export default function ConfigPanel() {
       {!step ? (
         <div className="no-step">Select a step to configure it</div>
       ) : (
-        <StepForm
-          step={step}
-          jobId={selectedStep.jobId}
-          stepId={selectedStep.stepId}
-          onUpdate={onUpdate}
-          onUpdateWith={onUpdateWith}
-          onUpdateEnv={onUpdateEnv}
-          lastFocusedRef={lastFocusedRef}
-        />
+        <StepForm {...sharedProps} />
       )}
     </div>
   )

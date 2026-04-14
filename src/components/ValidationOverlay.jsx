@@ -8,7 +8,7 @@ export default function ValidationOverlay() {
 
   if (!validationOpen) return null
 
-  const { errors, warnings } = validate(state.workflowName, state.triggers, state.jobs)
+  const { errors, warnings } = validate(state.workflowName, state.triggers, state.jobs, state.triggerConfig)
   const allGood = !errors.length && !warnings.length
 
   const close = () => dispatch({ type: 'CLOSE_VALIDATION' })

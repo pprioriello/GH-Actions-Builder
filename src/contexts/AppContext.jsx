@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useRef, useCallback, useMemo, useEffect } from 'react'
+import React, { createContext, useContext, useReducer, useRef, useCallback, useMemo, useEffect, useState } from 'react'
 import { STEP_DEFAULTS_MAP } from '../data/catalog.js'
 import { generateYaml } from '../utils/yaml.js'
 
@@ -25,8 +25,8 @@ const DEFAULT_TRIGGER_CONFIG = {
   push: { branches: [] },
   pull_request: { branches: [] },
   schedule: { crons: [] },
-  release: {},
-  workflow_dispatch: {},
+  release: { types: [] },
+  workflow_dispatch: { inputs: [] },
 }
 
 function getInitialState() {
@@ -205,6 +205,92 @@ function reducer(state, action) {
       }
     }
 
+    case 'ADD_STEP_WITH': {
+      const { jobId, stepId, key } = action.payload
+      return {
+        ...state,
+        jobs: state.jobs.map(j =>
+          j.id !== jobId ? j : {
+            ...j,
+            steps: j.steps.map(s =>
+              s.id !== stepId ? s : { ...s, with: { ...(s.with || {}), [key]: '' } }
+            )
+          }
+        )
+      }
+    }
+
+    case 'REMOVE_STEP_WITH': {
+      const { jobId, stepId, key } = action.payload
+      return {
+        ...state,
+        jobs: state.jobs.map(j =>
+          j.id !== jobId ? j : {
+            ...j,
+            steps: j.steps.map(s => {
+              if (s.id !== stepId) return s
+              const w = { ...(s.with || {}) }; delete w[key]
+              return { ...s, with: w }
+            })
+          }
+        )
+      }
+    }
+
+    case 'ADD_STEP_ENV': {
+      const { jobId, stepId, key } = action.payload
+      return {
+        ...state,
+        jobs: state.jobs.map(j =>
+          j.id !== jobId ? j : {
+            ...j,
+            steps: j.steps.map(s =>
+              s.id !== stepId ? s : { ...s, env: { ...(s.env || {}), [key]: '' } }
+            )
+          }
+        )
+      }
+    }
+
+    case 'REMOVE_STEP_ENV': {
+      const { jobId, stepId, key } = action.payload
+      return {
+        ...state,
+        jobs: state.jobs.map(j =>
+          j.id !== jobId ? j : {
+            ...j,
+            steps: j.steps.map(s => {
+              if (s.id !== stepId) return s
+              const e = { ...(s.env || {}) }; delete e[key]
+              return { ...s, env: e }
+            })
+          }
+        )
+      }
+    }
+
+    case 'UPDATE_JOB_ENV': {
+      const { jobId, key, value } = action.payload
+      return {
+        ...state,
+        jobs: state.jobs.map(j =>
+          j.id !== jobId ? j : { ...j, env: { ...(j.env || {}), [key]: value } }
+        )
+      }
+    }
+
+    case 'REMOVE_JOB_ENV': {
+      const { jobId, key } = action.payload
+      return {
+        ...state,
+        jobs: state.jobs.map(j => {
+          if (j.id !== jobId) return j
+          const e = { ...(j.env || {}) }; delete e[key]
+          return { ...j, env: e }
+        })
+      }
+    }
+
     case 'MOVE_STEP': {
       const { fromJobId, fromIdx, toJobId, toIdx } = action.payload
       const jobs = cloneDeep(state.jobs)
@@ -235,9 +321,14 @@ function reducer(state, action) {
       return { ...state, theme: action.payload }
 
     case 'SAVE_WORKFLOW': {
-      const { name, jobs, triggers } = action.payload
+      const { name, jobs, triggers, triggerConfig, permissions } = action.payload
       const existing = state.savedWorkflows.findIndex(w => w.name === name)
-      const entry = { name, jobs: cloneDeep(jobs), triggers: [...triggers], ts: Date.now() }
+      const entry = {
+        name, jobs: cloneDeep(jobs), triggers: [...triggers],
+        triggerConfig: cloneDeep(triggerConfig || {}),
+        permissions: { ...(permissions || {}) },
+        ts: Date.now(),
+      }
       const saved = [...state.savedWorkflows]
       if (existing >= 0) saved[existing] = entry
       else saved.push(entry)
@@ -257,6 +348,8 @@ function reducer(state, action) {
         workflowName: w.name,
         jobs: cloneDeep(w.jobs),
         triggers: [...w.triggers],
+        triggerConfig: { ...DEFAULT_TRIGGER_CONFIG, ...(w.triggerConfig || {}) },
+        permissions: w.permissions || {},
         selectedStep: null,
       }
     }
@@ -302,6 +395,8 @@ function reducer(state, action) {
         ...state,
         workflowName: 'New Workflow',
         triggers: ['push'],
+        triggerConfig: DEFAULT_TRIGGER_CONFIG,
+        permissions: {},
         jobs: [{ id: action.payload, name: 'build', os: 'ubuntu-latest', needs: [], steps: [] }],
         selectedStep: null,
       }
@@ -326,15 +421,39 @@ function reducer(state, action) {
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, null, getInitialState)
-  const uidRef = useRef(100)
+
+  // Seed the counter above the highest numeric ID already in the loaded state
+  // so that new IDs never collide with IDs restored from localStorage.
+  const uidRef = useRef(null)
+  if (uidRef.current === null) {
+    let max = 100
+    state.jobs.forEach(job => {
+      const jn = parseInt(job.id.replace(/\D+/g, ''), 10)
+      if (!isNaN(jn)) max = Math.max(max, jn)
+      job.steps.forEach(step => {
+        const sn = parseInt(step.id.replace(/\D+/g, ''), 10)
+        if (!isNaN(sn)) max = Math.max(max, sn)
+      })
+    })
+    uidRef.current = max
+  }
+
   const dragSrcRef = useRef(null)
   const lastFocusedRef = useRef(null)
+
+  // Dirty tracking — skips first mount, marks dirty on any workflow change
+  const [dirty, setDirty] = useState(false)
+  const isMountedRef = useRef(false)
+  useEffect(() => {
+    if (!isMountedRef.current) { isMountedRef.current = true; return }
+    setDirty(true)
+  }, [state.workflowName, state.triggers, state.triggerConfig, state.permissions, state.jobs])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_THEME, state.theme)
   }, [state.theme])
 
-  useEffect(() => {
+  const saveWorkflow = useCallback(() => {
     localStorage.setItem(STORAGE_WORKFLOW, JSON.stringify({
       workflowName: state.workflowName,
       triggers: state.triggers,
@@ -342,6 +461,7 @@ export function AppProvider({ children }) {
       permissions: state.permissions,
       jobs: state.jobs,
     }))
+    setDirty(false)
   }, [state.workflowName, state.triggers, state.triggerConfig, state.permissions, state.jobs])
 
   useEffect(() => {
@@ -392,6 +512,8 @@ export function AppProvider({ children }) {
     yaml,
     getStep,
     addStepFromDrag,
+    saveWorkflow,
+    dirty,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

@@ -10,7 +10,7 @@ function CogIcon() {
 }
 
 export default function Topbar() {
-  const { state, dispatch } = useApp()
+  const { state, dispatch, dirty } = useApp()
 
   return (
     <div className="topbar">
@@ -22,6 +22,9 @@ export default function Topbar() {
         value={state.workflowName}
         onChange={e => dispatch({ type: 'SET_WORKFLOW_NAME', payload: e.target.value })}
       />
+      {dirty && (
+        <span className="tb-dirty" title="Unsaved changes">●</span>
+      )}
       <div className="topbar-right">
         <button className="cog-btn" title="Settings" onClick={() => dispatch({ type: 'TOGGLE_SETTINGS' })}>
           <CogIcon />

@@ -31,7 +31,7 @@ function fallbackCopy(text) {
 }
 
 export default function SettingsPanel() {
-  const { state, dispatch, yaml, genJobId } = useApp()
+  const { state, dispatch, yaml, genJobId, saveWorkflow } = useApp()
   const { settingsPanelOpen, theme, savedWorkflows } = state
   const fileInputRef = useRef(null)
   const [copyLabel, setCopyLabel] = React.useState('Copy YAML to clipboard')
@@ -60,9 +60,16 @@ export default function SettingsPanel() {
   }
 
   const handleSave = () => {
+    saveWorkflow()
     dispatch({
       type: 'SAVE_WORKFLOW',
-      payload: { name: state.workflowName, jobs: state.jobs, triggers: state.triggers }
+      payload: {
+        name: state.workflowName,
+        jobs: state.jobs,
+        triggers: state.triggers,
+        triggerConfig: state.triggerConfig,
+        permissions: state.permissions,
+      }
     })
   }
 

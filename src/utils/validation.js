@@ -2,12 +2,31 @@ function has(types, vals) {
   return vals.some(v => types.includes(v))
 }
 
-export function validate(workflowName, triggers, jobs) {
+function isValidCron(expr) {
+  if (!expr || !expr.trim()) return false
+  return expr.trim().split(/\s+/).length === 5
+}
+
+export function validate(workflowName, triggers, jobs, triggerConfig = {}) {
   const errors = []
   const warnings = []
 
   if (!(workflowName || '').trim()) errors.push('Workflow has no name.')
   if (!triggers.length) errors.push('No triggers selected.')
+
+  // Cron validation
+  if (triggers.includes('schedule')) {
+    const crons = triggerConfig.schedule?.crons || []
+    if (!crons.length) {
+      warnings.push('Schedule trigger has no cron expressions.')
+    } else {
+      crons.forEach((c, i) => {
+        if (!isValidCron(c)) {
+          errors.push('Invalid cron expression #' + (i + 1) + ': "' + c + '" (must have 5 parts).')
+        }
+      })
+    }
+  }
 
   if (!jobs.length) {
     errors.push('Workflow has no jobs.')
@@ -73,6 +92,9 @@ export function validate(workflowName, triggers, jobs) {
         errors.push(jl + ': step "' + s.name + '" has empty run command.')
       if (s.uses !== undefined && !(s.uses || '').trim())
         errors.push(jl + ': step "' + s.name + '" has empty uses field.')
+      // Warn if uses action has no version pin
+      if (s.uses && s.uses.trim() && !s.uses.includes('@'))
+        warnings.push(jl + ': step "' + s.name + '" uses action without version pin.')
     })
 
     const snames = job.steps.map(s => (s.name || '').trim())

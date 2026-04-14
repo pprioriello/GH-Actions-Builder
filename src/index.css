@@ -299,3 +299,57 @@ textarea.field-input{resize:vertical;min-height:56px;font-family:var(--font-mono
   .cfg-label{font-size:12px}
   .ctx-chip{font-size:11px;padding:4px 10px}
 }
+
+/* ── Dirty indicator ─────────────────────────────────────── */
+.tb-dirty{font-size:10px;color:#e55;opacity:0.85;flex-shrink:0;letter-spacing:0}
+body[class*="-dark"] .tb-dirty{color:#f87171}
+
+/* ── Config panel: checkbox field ────────────────────────── */
+.cfg-checkbox-field{margin-bottom:9px}
+.cfg-checkbox-label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--color-text-primary)}
+.cfg-checkbox-label input[type=checkbox]{width:14px;height:14px;accent-color:var(--acc);cursor:pointer;flex-shrink:0}
+.cfg-checkbox-label .cfg-label-hint{font-size:11px;opacity:0.65}
+
+/* ── Config panel: kv rows ───────────────────────────────── */
+.cfg-kv-row{margin-bottom:6px}
+.cfg-kv-input-row{display:flex;gap:4px;align-items:center}
+.cfg-kv-input-row .cfg-input{flex:1}
+.cfg-kv-rm{background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);font-size:16px;padding:0 4px;border-radius:4px;line-height:1;flex-shrink:0}
+.cfg-kv-rm:hover{color:#a32d2d;background:#fcebeb}
+.cfg-kv-add-row{display:flex;gap:6px;align-items:center;margin-top:4px;padding-top:6px;border-top:0.5px dashed var(--color-border-tertiary)}
+.cfg-kv-add-row .cfg-input{flex:1}
+.cfg-kv-add-btn{white-space:nowrap;font-size:11px;padding:5px 10px;border:0.5px solid var(--color-border-secondary);border-radius:6px;background:transparent;color:var(--color-text-secondary);cursor:pointer;font-family:inherit}
+.cfg-kv-add-btn:hover{background:var(--color-background-info);color:var(--color-text-info)}
+
+/* ── Job card: timeout + env ─────────────────────────────── */
+.job-timeout-input{width:72px;font-size:11px;padding:2px 6px;border:none;background:transparent;color:var(--color-text-secondary);outline:none;border-bottom:0.5px dashed var(--color-border-tertiary);text-align:center}
+.job-timeout-input::placeholder{color:var(--color-text-tertiary);font-size:10px}
+.job-timeout-input:focus{border-color:var(--acc)}
+.job-env-toggle{font-size:10px;padding:2px 7px;border:0.5px solid var(--color-border-secondary);border-radius:10px;background:transparent;color:var(--color-text-tertiary);cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
+.job-env-toggle:hover,.job-env-toggle.open{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.job-env-section{padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);display:flex;flex-direction:column;gap:5px}
+.job-env-row{display:flex;align-items:center;gap:6px}
+.job-env-key{font-size:11px;font-family:var(--font-mono,monospace);color:var(--color-text-secondary);min-width:100px;flex-shrink:0}
+.job-env-val{flex:1;font-size:11px;padding:3px 7px;border:0.5px solid var(--color-border-secondary);border-radius:5px;background:var(--color-background-primary);color:var(--color-text-primary);font-family:var(--font-mono,monospace)}
+.job-env-val:focus{outline:none;border-color:var(--acc)}
+.job-env-rm{background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);font-size:15px;padding:0 3px;line-height:1}
+.job-env-rm:hover{color:#a32d2d}
+.job-env-new{flex:1;font-size:11px;padding:3px 7px;border:0.5px solid var(--color-border-secondary);border-radius:5px;background:var(--color-background-primary);color:var(--color-text-primary);font-family:var(--font-mono,monospace)}
+.job-env-new:focus{outline:none;border-color:var(--acc)}
+.job-env-add{font-size:11px;padding:3px 8px;border:0.5px solid var(--color-border-secondary);border-radius:5px;background:transparent;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap}
+.job-env-add:hover{background:var(--color-background-info);color:var(--color-text-info)}
+
+/* ── Trigger: release types checkboxes ───────────────────── */
+.tcp-release-types{display:flex;flex-wrap:wrap;gap:6px}
+.tcp-checkbox-label{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--color-text-primary);cursor:pointer;white-space:nowrap}
+.tcp-checkbox-label input[type=checkbox]{accent-color:var(--acc);width:12px;height:12px;cursor:pointer}
+
+/* ── Trigger: cron validation warning ────────────────────── */
+.tcp-input-warn{border-color:#e55!important;background:rgba(229,85,85,0.06)!important}
+.tcp-cron-warn{color:#e55;font-size:13px;flex-shrink:0;cursor:default}
+
+/* ── Trigger: workflow_dispatch inputs ───────────────────── */
+.tcp-section-wide{min-width:280px;flex-basis:100%}
+.tcp-dispatch-inputs{display:flex;flex-direction:column;gap:6px}
+.tcp-dispatch-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:6px 8px;background:var(--color-background-secondary);border-radius:7px;border:0.5px solid var(--color-border-tertiary)}
+.tcp-dispatch-row .tcp-input{min-width:80px;flex:1}
